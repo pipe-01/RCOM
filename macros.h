@@ -1,3 +1,4 @@
+#pragma once
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -22,3 +23,13 @@
 #define REJ 0x01
 #define SET_BCC A ^ SET
 #define UA_BCC A ^ UA
+
+typedef enum
+{
+    START,
+    FLAG_RCV,
+    A_RCV,
+    C_RCV,
+    BCC_OK,
+    STOP
+} State_Machine;

@@ -67,7 +67,7 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
-    printf("Write whatever you want: ");
+    //printf("Write whatever you want: ");
     
     fgets(buf, 255, stdin);
 

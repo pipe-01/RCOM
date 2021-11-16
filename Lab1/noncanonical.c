@@ -1,7 +1,4 @@
-
-/*Non-Canonical Input Processing*/
 #include "macros.h"
-
 #define BAUDRATE B38400
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
@@ -15,20 +12,20 @@ int receiveMessage(int fd, unsigned char msg){
   unsigned char * received_msg;
   int br = 0;
   while(br != 5){
-    res = read(fd, &received_msg, 1);
+    int res = read(fd, &received_msg, 1);
     if(res > 0){
       switch (br){
       case 0: //FLAG
-        if(receive_msg == FLAG){
+        if(received_msg == FLAG){
           br = 1;
         }
         break;
       case 1: // A
-        if(receive_msg == A){
+        if(received_msg == A){
           br = 2;
         }
         else{
-          if(receive_msg == FLAG){
+          if(received_msg == FLAG){
             br = 1;
           }
           else{
@@ -163,7 +160,7 @@ int main(int argc, char** argv)
       printf("Error\n");
     }
     else{
-      print("Bytes sent: %i\n", res);
+      printf("Bytes sent: %i\n", res);
     }
     
 
