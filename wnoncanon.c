@@ -4,12 +4,16 @@
 #include "macros.h"
 
 volatile int STOP=FALSE;
+#define _POSIX_SOURCE 1 /* POSIX compliant source */
+#define FALSE 0
+#define TRUE 1
+#define MAX_BUF 255
 
 int main(int argc, char** argv)
 {
     int fd,c, res;
     struct termios oldtio,newtio;
-    char buf[255];
+    char buf[255], aux[255];
     int i, sum = 0, speed = 0;
     
     if ( (argc < 2) || 
@@ -78,36 +82,39 @@ int main(int argc, char** argv)
    
     res = write(fd,buf,nchar);   
     printf("%d characters written\n", nchar);
- 
-    //SET
-    unsigned char buffer[5];
-    buffer[0] = FLAG; //F
-    buffer[1] = A; //A
-    buffer[2] = SET;  //C
-    buffer[3] = SET_BCC; //Bcc
-    buffer[4] = FLAG;     //F
-    
-    res = write(fd, buffer, 5);
 
   /** 
     O ciclo FOR e as instru��es seguintes devem ser alterados de modo a respeitar 
     o indicado no gui�o 
   **/
 
-    while (STOP==FALSE) {       /* loop for input */
-      res = read(fd,buf,5);
-      buf[res] = 0;
-      printf("%s", buf);
-      if (buf[0] == '\n') STOP=TRUE;       
-    }
-
-    sleep(1);
-       
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
       exit(-1);
     }
 
+    
+    while (STOP==FALSE) {       /* loop for input */
+      res = read(fd,buf,1);
+      if(res == -1){
+        printf("Error\n");
+        STOP = TRUE;
+      }
+      else if(res > 0){   /* returns after 5 chars have been input */
+                     /* so we can printf... */
+         buf[res] = 0;
+         printf("%s", buf);
+            aux[i] = buf[0];
+             if (aux[i]=='\0' || aux[i] == '\n'){
+              STOP=TRUE;
+              printf("Im leaving\n");
+             }
+              i++;
+        }
+    }
+    printf("Received the string: %s\n", aux);
+
+  sleep(1);
 
     close(fd);
     return 0;

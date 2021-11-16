@@ -157,14 +157,19 @@ int main(int argc, char** argv)
         
     }
     printf("\n");
+
+    res = write(fd, aux, i);
+    if(res == -1){
+      printf("Error\n");
+    }
+    else{
+      print("Bytes sent: %i\n", res);
+    }
     
 
     if(receiveMessage(fd, SET)){
       resendMessage(fd, UA);
     }
-
-    
-
 
 
   /* 
