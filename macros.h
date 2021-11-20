@@ -39,6 +39,13 @@ typedef enum {
     STOP
 } State_Machine;
 
+typedef struct
+{
+    unsigned char *filename;
+    int size;
+} fileInfo;
+
 unsigned char *stateMachine(int fd, unsigned char header, char controlField, int type, int *size);
 void receiveControlMsg(int fd, unsigned char header, unsigned char controlField);
 void sendControlMsg(int fd, unsigned char header, unsigned char controlField);
+int getFileSize(FILE *file);

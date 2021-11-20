@@ -286,3 +286,25 @@ unsigned char *destuffingData(unsigned char *buffer, int *size)
 
     return db;
 }
+
+int getFileSize(FILE *file)
+{
+    // guarda posição atual
+    long int currentPosition = ftell(file);
+
+    // procura eof
+    if (fseek(file, 0, SEEK_END) == -1)
+    {
+        printf("ERROR: Could not get file size.\n");
+        return -1;
+    }
+
+    // guarda tamanho do ficheiro
+    long int size = ftell(file);
+
+    // procura a posição guardada previamente
+    fseek(file, 0, currentPosition);
+
+    // retorna tamanho
+    return size;
+}

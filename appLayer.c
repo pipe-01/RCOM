@@ -65,10 +65,114 @@ int llwrite(int fd, char * buffer, int length){
     return 0;
 }
 
-int llread(int fd, char * buffer){
+int llread(int port)
+{
+    fileInfo dataInfo = receiveControlPackage(port);
+
+    int numFrame = dataInfo.size / 256;
+
+    int l1 = dataInfo.size / 256;
+    int l2 = dataInfo.size % 256;
+
+    if (l2 != 0)
+    {
+        numFrame++;
+    }
+
+    printf("Number of Frames: %d", numFrame); //debug
+    int *size = malloc(sizeof(int));
+
+    unsigned char *fileData = malloc(sizeof(unsigned char) * dataInfo.size);
+
+    int counter = 0;
+    int n = -1;
+    int currentN = 0;
+    int fail = FALSE;
+    for (int i = 0; i < numFrame; i++)
+    {
+
+        if (fail == TRUE)
+        {
+            printf("numFrame: %d\n failed at - %d\n", numFrame, i);
+        }
+
+        unsigned char *data = stateMachine(port, A_TRM, 0x00, I, size);
+        currentN = data[1];
+
+        if (currentN == n + 1)
+        {
+            if (i < numFrame - 1 && (*size >= 255 && *size <= 261))
+            {
+                int cnt = 0;
+                for (int d = 4; d < (*size) - 1; d++)
+                {
+                    cnt++;
+                    fileData[counter++] = data[d];
+                }
+                printf("FRAME - %d | SIZE: %d\n", data[1], cnt);
+                fail = FALSE;
+                n = currentN;
+            }
+            else if (i == numFrame - 1 && (*size >= l2 && *size <= l2 + 5))
+            {
+                int cnt = 0;
+                for (int d = 4; d < (*size) - 1; d++)
+                {
+                    cnt++;
+                    fileData[counter++] = data[d];
+                }
+                printf("LAST FRAME - %d | SIZE: %d\n", data[1], cnt);
+                n = currentN;
+            }
+            else if (*size > 261)
+            {
+                int cnt = 0;
+                for (int d = (*size) - 257; d < (*size) - 1; d++)
+                {
+                    cnt++;
+                    fileData[counter++] = data[d];
+                }
+                printf("FRAME - %d | SIZE: %d\n", data[1], cnt);
+                fail = FALSE;
+                n = currentN;
+            }
+            else
+            {
+                printf("%d\n", *size);
+                printf("Incorrect frame with i = %d\n", i);
+                //  sendControlMsg(port, A_TRM, 0x01);
+                i--;
+                printf("Decreased i: %d\n", i);
+            }
+        }
+        else if (currentN == n)
+        { //duplicado
+            printf("Received Duplicate with i = %d\n", i);
+            i--;
+            printf("Decreased i by: %d\n", i);
+        }
+        else
+        {
+            i--;
+        }
+
+        if (currentN == 255)
+        {
+            n = -1;
+        }
+    }
+
+    printf("SIZE: %d", counter);
+
+    fileInfo dataInfoFinal = receiveControlPackage(port);
+
+    createFile(dataInfo, fileData);
+
     return 0;
 }
+}
 
-int llclose(int fd){
-    return 0;
+
+int llclose(int fd, int status){
+
 }
