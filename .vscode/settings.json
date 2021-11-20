@@ -2,5 +2,6 @@
     "C_Cpp.errorSquiggles": "Disabled",
     "files.associations": {
         "macros.h": "c"
-    }
+    },
+    "cmake.configureOnOpen": true
 }

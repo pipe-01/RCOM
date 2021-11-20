@@ -23,7 +23,7 @@ unsigned char *stateMachine(int fd, unsigned char header, char controlField, int
     State_Machine state = START;
     unsigned char *msg = malloc(sizeof(unsigned char) * MAX_SIZE);
     unsigned char *res = malloc(sizeof(unsigned char));
-    res[0] = 0x3;
+    res[0] = 0x03;
     unsigned char c;
     int counter = 0;
     int seqN = 0;
@@ -180,4 +180,109 @@ unsigned char *stateMachine(int fd, unsigned char header, char controlField, int
     {
         return res;
     }
+}
+
+unsigned char calculateBCC2(const unsigned char *buffer, unsigned int size)
+{
+    unsigned char bcc2 = 0;
+
+    for (unsigned int i = 0; i < size; i++)
+    {
+        bcc2 ^= buffer[i];
+    }
+    return bcc2;
+}
+
+int calculateStuffedSize(unsigned char *buffer, int size)
+{
+    int counter = 0;
+
+    for (int i = 0; i < size; i++)
+    {
+        if (buffer[i] == 0x7e)
+        {
+            counter++;
+        }
+        else if (buffer[i] == 0x7d)
+        {
+            counter++;
+        }
+        counter++;
+    }
+    return counter;
+}
+
+unsigned char *stuffingData(unsigned char *buffer, int *size)
+{
+    int startStuffedSize = *size;
+    if (*size < MAX_SIZE)
+        startStuffedSize = MAX_SIZE;
+
+    int counter = 0;
+    unsigned char stuffedBuffer[startStuffedSize];
+
+    for (int i = 0; i < (*size); i++)
+    {
+        if (buffer[i] == FLAG)
+        {
+            stuffedBuffer[counter++] = ESCAPEMENT;
+            stuffedBuffer[counter++] = REPLACE_FLAG;
+        }
+        else if (buffer[i] == ESCAPEMENT)
+        {
+            stuffedBuffer[counter++] = ESCAPEMENT;
+            stuffedBuffer[counter++] = REPLACE_ESCAPEMENT;
+        }
+        else
+        {
+            stuffedBuffer[counter++] = buffer[i];
+        }
+    }
+
+    *size = counter;
+
+    unsigned char *sb = malloc(sizeof(unsigned char) * (counter));
+    for (int i = 0; i < counter; i++)
+    {
+        sb[i] = stuffedBuffer[i];
+    }
+
+    return sb;
+}
+
+unsigned char *destuffingData(unsigned char *buffer, int *size)
+{
+    int counter = 0;
+    unsigned char destuffedData[MAX_SIZE];
+
+    for (int i = 0; i < (*size); i++)
+    {
+        if (buffer[i] == 0x7d)
+        {
+            if (buffer[i + 1] == 0x5e)
+            {
+                destuffedData[counter++] = 0x7e;
+            }
+            else if (buffer[i + 1] == 0x5d)
+            {
+                destuffedData[counter++] = 0x7d;
+            }
+            i++;
+        }
+        else
+        {
+            destuffedData[counter++] = buffer[i];
+        }
+    }
+
+    unsigned char *db = malloc(sizeof(unsigned char) * counter);
+
+    for (int j = 0; j < counter; j++)
+    {
+        db[j] = destuffedData[j];
+    }
+
+    *size = counter;
+
+    return db;
 }
