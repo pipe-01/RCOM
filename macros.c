@@ -2,20 +2,26 @@
 
 void sendControlMsg(int fd, unsigned char header, unsigned char controlField)
 {
-    unsigned char message[5];
-    message[0] = FLAG;
-    message[1] = header;
-    message[2] = controlField;
-    message[3] = (A_TRM ^ controlField);
-    message[4] = FLAG;
-    write(fd, message, 5);
+    unsigned char msg[5];
+    msg[0] = FLAG;
+    msg[1] = header;
+    msg[2] = controlField;
+    msg[3] = (msg[1] ^ msg[2]);
+    msg[4] = FLAG;
+    write(fd, msg, 5);
 }
+
+void receiveControlMsg(int fd, unsigned char header, unsigned char controlField){
+    int res;
+    
+}
+
 
 unsigned char *stateMachine(int fd, unsigned char header, char controlField, int type, int *size)
 {
 
     State_Machine state = START;
-    unsigned char *message = malloc(sizeof(unsigned char) * MAX_SIZE);
+    unsigned char *msg = malloc(sizeof(unsigned char) * MAX_SIZE);
     unsigned char *res = malloc(sizeof(unsigned char));
     res[0] = 0x3;
     unsigned char c;
@@ -112,12 +118,12 @@ unsigned char *stateMachine(int fd, unsigned char header, char controlField, int
 
                     *size = counter;
 
-                    message = destuffingData(message, size);
+                    msg = destuffingData(msg, size);
 
-                    unsigned char bcc2 = message[*size - 1];
+                    unsigned char bcc2 = msg[*size - 1];
 
                     int sizeBcc = *size - 1;
-                    unsigned char calcBcc2 = calculateBCC2(message, sizeBcc);
+                    unsigned char calcBcc2 = calculateBCC2(msg, sizeBcc);
 
                     unsigned char positiveACK;
                     unsigned char negativeACK; 
@@ -146,12 +152,12 @@ unsigned char *stateMachine(int fd, unsigned char header, char controlField, int
                 }
                 else
                 {
-                    message[counter++] = c;
+                    msg[counter++] = c;
                     if (counter == MAX_SIZE)
                     {
                         counter = 0;
                         state = START;
-                        free(message);
+                        free(msg);
                     }
                 }
             }
@@ -166,7 +172,7 @@ unsigned char *stateMachine(int fd, unsigned char header, char controlField, int
         unsigned char *data = malloc(sizeof(unsigned char) * (*size));
         for (int i = 0; i < (*size); i++)
         {
-            data[i] = message[i];
+            data[i] = msg[i];
         }
         return data;
     }

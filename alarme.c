@@ -1,29 +1,23 @@
-#include <unistd.h>
-#include <signal.h>
-#include <stdio.h>
+#include "alarme.h"
+#include "macros.h"
 
-int flag=1, conta=1;
 
-void atende()                   // atende alarme
-{
-	printf("alarme # %d\n", conta);
-	flag=1;
-	conta++;
+void alarmHandler(){
+   printf("\nAlarm: %d\n", numRetry + 1);
+   alarmFlag = TRUE;
+   numRetry++;
 }
 
-
-int main(int argc, char **argv)
-{
-
-(void) signal(SIGALRM, atende);  // instala  rotina que atende interrupcao
-
-while(conta < 4){
-   if(flag){
-      alarm(3);                 // activa alarme de 3s
-      flag=0;
+int checkAlarm(){
+   if(!alarmFlag || numRetry != MAX_RETRY){
+      printf("\nTrama UA recebida\n");
+      alarmFlag = FALSE;
+      numRetry = 0;
+      printf("\nProtocol connection established!\n");
+      return TRUE;
    }
-}
-printf("Vou terminar.\n");
-
+   else{
+      return FALSE;
+   }
 }
 
