@@ -16,6 +16,43 @@ void receiveControlMsg(int fd, unsigned char header, unsigned char controlField)
     
 }
 
+unsigned char *destuffingData(unsigned char *buf, int *size)
+{
+    int counter = 0;
+    unsigned char destuffedData[MAX_SIZE];
+
+    for (int i = 0; i < (*size); i++)
+    {
+        if (buf[i] == 0x7d)
+        {
+            if (buf[i + 1] == 0x5e)
+            {
+                destuffedData[counter++] = 0x7e;
+            }
+            else if (buf[i + 1] == 0x5d)
+            {
+                destuffedData[counter++] = 0x7d;
+            }
+            i++;
+        }
+        else
+        {
+            destuffedData[counter++] = buf[i];
+        }
+    }
+
+    unsigned char *db = malloc(sizeof(unsigned char) * counter);
+
+    for (int j = 0; j < counter; j++)
+    {
+        db[j] = destuffedData[j];
+    }
+
+    *size = counter;
+
+    return db;
+}
+
 
 unsigned char *stateMachine(int fd, unsigned char header, char controlField, int type, int *size)
 {
@@ -182,28 +219,29 @@ unsigned char *stateMachine(int fd, unsigned char header, char controlField, int
     }
 }
 
-unsigned char calculateBCC2(const unsigned char *buffer, unsigned int size)
+
+unsigned char calculateBCC2(const unsigned char *buf, unsigned int size)
 {
     unsigned char bcc2 = 0;
 
     for (unsigned int i = 0; i < size; i++)
     {
-        bcc2 ^= buffer[i];
+        bcc2 ^= buf[i];
     }
     return bcc2;
 }
 
-int calculateStuffedSize(unsigned char *buffer, int size)
+int stuffedSizeCalculator(unsigned char *buf, int size)
 {
     int counter = 0;
 
     for (int i = 0; i < size; i++)
     {
-        if (buffer[i] == 0x7e)
+        if (buf[i] == 0x7e)
         {
             counter++;
         }
-        else if (buffer[i] == 0x7d)
+        else if (buf[i] == 0x7d)
         {
             counter++;
         }
@@ -212,7 +250,7 @@ int calculateStuffedSize(unsigned char *buffer, int size)
     return counter;
 }
 
-unsigned char *stuffingData(unsigned char *buffer, int *size)
+unsigned char *stuffingData(unsigned char *buf, int *size)
 {
     int startStuffedSize = *size;
     if (*size < MAX_SIZE)
@@ -223,19 +261,19 @@ unsigned char *stuffingData(unsigned char *buffer, int *size)
 
     for (int i = 0; i < (*size); i++)
     {
-        if (buffer[i] == FLAG)
+        if (buf[i] == FLAG)
         {
             stuffedBuffer[counter++] = ESCAPEMENT;
             stuffedBuffer[counter++] = REPLACE_FLAG;
         }
-        else if (buffer[i] == ESCAPEMENT)
+        else if (buf[i] == ESCAPEMENT)
         {
             stuffedBuffer[counter++] = ESCAPEMENT;
             stuffedBuffer[counter++] = REPLACE_ESCAPEMENT;
         }
         else
         {
-            stuffedBuffer[counter++] = buffer[i];
+            stuffedBuffer[counter++] = buf[i];
         }
     }
 
@@ -250,42 +288,7 @@ unsigned char *stuffingData(unsigned char *buffer, int *size)
     return sb;
 }
 
-unsigned char *destuffingData(unsigned char *buffer, int *size)
-{
-    int counter = 0;
-    unsigned char destuffedData[MAX_SIZE];
 
-    for (int i = 0; i < (*size); i++)
-    {
-        if (buffer[i] == 0x7d)
-        {
-            if (buffer[i + 1] == 0x5e)
-            {
-                destuffedData[counter++] = 0x7e;
-            }
-            else if (buffer[i + 1] == 0x5d)
-            {
-                destuffedData[counter++] = 0x7d;
-            }
-            i++;
-        }
-        else
-        {
-            destuffedData[counter++] = buffer[i];
-        }
-    }
-
-    unsigned char *db = malloc(sizeof(unsigned char) * counter);
-
-    for (int j = 0; j < counter; j++)
-    {
-        db[j] = destuffedData[j];
-    }
-
-    *size = counter;
-
-    return db;
-}
 
 int getFileSize(FILE *file)
 {

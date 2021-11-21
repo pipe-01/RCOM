@@ -61,7 +61,20 @@ int llopen(int port, int role){
 }
 
 
-int llwrite(int fd, char * buffer, int length){
+int llwrite(int port, FILE *f, char *fName)
+{
+    int fSize = getFileSize(f);
+
+    unsigned char *buffer = malloc(sizeof(unsigned char) * fSize);
+
+    fread(buffer, sizeof(unsigned char), fSize, fe);
+
+    int seqN = sendControl(port, fSize, fName, 0x02);
+
+    sendData(port, buffer, fSize, seqN);
+
+    sendControl(port, fSize, fName, 0x03);
+
     return 0;
 }
 
