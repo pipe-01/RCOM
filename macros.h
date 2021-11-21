@@ -46,7 +46,6 @@ typedef struct
 } fileInfo;
 
 unsigned char *stateMachine(int fd, unsigned char header, char controlField, int type, int *size);
-void receiveControlMsg(int fd, unsigned char header, unsigned char controlField);
 void sendControlMsg(int fd, unsigned char header, unsigned char controlField);
 unsigned char *stuffingData(unsigned char *buffer, int *size);
 int getFileSize(FILE *file);

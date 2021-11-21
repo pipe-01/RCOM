@@ -1,6 +1,6 @@
 #include "macros.h"
 
-void sendControlMsg(int fd, unsigned char header, unsigned char controlField)
+void sendControlMsg(int port, unsigned char header, unsigned char controlField)
 {
     unsigned char msg[5];
     msg[0] = FLAG;
@@ -8,12 +8,7 @@ void sendControlMsg(int fd, unsigned char header, unsigned char controlField)
     msg[2] = controlField;
     msg[3] = (msg[1] ^ msg[2]);
     msg[4] = FLAG;
-    write(fd, msg, 5);
-}
-
-void receiveControlMsg(int fd, unsigned char header, unsigned char controlField){
-    int res;
-    
+    write(port, msg, 5);
 }
 
 unsigned char *destuffingData(unsigned char *buf, int *size)
@@ -54,7 +49,7 @@ unsigned char *destuffingData(unsigned char *buf, int *size)
 }
 
 
-unsigned char *stateMachine(int fd, unsigned char header, char controlField, int type, int *size)
+unsigned char *stateMachine(int port, unsigned char header, char controlField, int type, int *size)
 {
 
     State_Machine state = START;
@@ -67,7 +62,7 @@ unsigned char *stateMachine(int fd, unsigned char header, char controlField, int
 
     while (state != STOP && !alarmFlag)
     {
-        read(fd, &c, 1);
+        read(port, &c, 1);
 
         switch (state)
         {
@@ -175,7 +170,7 @@ unsigned char *stateMachine(int fd, unsigned char header, char controlField, int
                         {
                             positiveACK = 0x85;
                         }
-                        sendControlMsg(fd, A_TRM, positiveACK);
+                        sendControlMsg(port, A_TRM, positiveACK);
 
                     }
                 }

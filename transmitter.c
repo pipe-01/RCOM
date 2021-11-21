@@ -285,3 +285,34 @@ unsigned char *generateDataPackage(unsigned char *buf, int *size, int n, int l1,
 
     return dp;
 }
+
+void closeConnection(int fd)
+{
+    do
+    {
+        sendControlMsg(fd, A_TRM, C_SET);
+        //printf("\nTrama DISC enviada\n");
+
+        alarmFlag = FALSE;
+        alarm(TIMEOUT);
+
+        int *size = malloc(sizeof(int));
+        stateMachine(fd, A_REC, C_DISC, S, size);
+        //printf("Trama DISC recebida!\n");
+
+        sendControlMsg(fd, A_REC, C_UA);
+        //printf("Trama UA enviada!\n");
+
+    } while (alarmFlag && numRetry < MAX_RETRY);
+
+    if (alarmFlag && numRetry == MAX_RETRY)
+        return;
+
+    else
+    {
+        printf("Connection closed!\n");
+        alarmFlag = FALSE;
+        numRetry = 0;
+        return;
+    }
+}

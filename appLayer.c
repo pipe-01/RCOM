@@ -187,5 +187,15 @@ int llread(int port)
 
 
 int llclose(int fd, int status){
+    if (status == TRANSMITTER)
+    {
+        closeConnection(fd);
+    }
+    if (status == RECEIVER)
+    {
+        handleDisconnection(fd);
+    }
+    close(fd);
 
+    return 0;
 }
