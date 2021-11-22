@@ -51,9 +51,45 @@ typedef struct
     unsigned char *filename;
     int size;
 } fileInfo;
-
+/**
+ * @brief Sends message to state machine
+ * 
+ * @param fd 
+ * @param header 
+ * @param controlField 
+ * @param type 
+ * @param size 
+ * @return unsigned char* 
+ */
 unsigned char *stateMachine(int fd, unsigned char header, char controlField, int type, int *size);
+/**
+ * @brief Send Control Message
+ * 
+ * @param fd 
+ * @param header 
+ * @param controlField 
+ */
 void sendControlMsg(int fd, unsigned char header, unsigned char controlField);
+/**
+ * @brief Stuffs data
+ * 
+ * @param buffer 
+ * @param size 
+ * @return unsigned char* 
+ */
 unsigned char *stuffingData(unsigned char *buffer, int *size);
+/**
+ * @brief Returns File size
+ * 
+ * @param file 
+ * @return int 
+ */
 int getFileSize(FILE *file);
+/**
+ * @brief Calculates BCC2
+ * 
+ * @param buffer 
+ * @param size 
+ * @return unsigned char 
+ */
 unsigned char calculateBCC2(const unsigned char *buffer, unsigned int size);
