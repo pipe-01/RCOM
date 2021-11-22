@@ -20,8 +20,38 @@ typedef struct applicationLayers{
     int status;
 } applicationLayer;
 
-
+/**
+ * @brief 
+ * 
+ * @param port 
+ * @param role 
+ * @return int 
+ */
 int llopen(int port, int role);
+
+/**
+ * @brief 
+ * 
+ * @param port 
+ * @param f 
+ * @param fname 
+ * @return int 
+ */
 int llwrite(int port, FILE *f, char *fname);
+
+/**
+ * @brief 
+ * 
+ * @param fd 
+ * @return int 
+ */
 int llread(int fd);
+
+/**
+ * @brief 
+ * 
+ * @param fd 
+ * @param status 
+ * @return int 
+ */
 int llclose(int fd, int status);
