@@ -23,5 +23,5 @@ typedef struct applicationLayers{
 
 int llopen(int port, int role);
 int llwrite(int port, FILE *f, char *fname);
-int llread(int fd, char * buffer);
-int llclose(int fd);
+int llread(int fd);
+int llclose(int fd, int status);

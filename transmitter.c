@@ -1,5 +1,8 @@
 #include "transmitter.h"
 
+int numRetry = 0;
+int alarmFlag = FALSE;
+
 int setUpTransmitter(int fd){
     do{
         sendControlMsg(fd, A_TRM, SET);
@@ -15,7 +18,7 @@ int setUpTransmitter(int fd){
 
     return checkAlarm();
 }
-void sendControlPackage(int port, unsigned char *controlPackage, int *size, int s)
+void sendControlPackage(int port, unsigned char *controlPackage, int *size, unsigned char bcc2, int s)
 {
     int bufferSize = *size + 6;
     unsigned char buffer[bufferSize];
@@ -47,8 +50,8 @@ void sendControlPackage(int port, unsigned char *controlPackage, int *size, int 
 unsigned char *generateControlPackage(int fSize, unsigned char *fName, int *packSize, int controlField)
 {
     int sizefName = strlen(fName);
-    int packSize = 9 * sizeof(unsigned char) + sizefName;
-    unsigned char *controlPackage = malloc(sizeof(unsigned char) * (packSize + 1));
+    int packSizeAux = 9 * sizeof(unsigned char) + sizefName;
+    unsigned char *controlPackage = malloc(sizeof(unsigned char) * (packSizeAux + 1));
 
     controlPackage[0] = controlField;
     controlPackage[1] = T1; //file size
@@ -64,7 +67,7 @@ unsigned char *generateControlPackage(int fSize, unsigned char *fName, int *pack
         controlPackage[9 + i] = fName[i];
     }
 
-    *packSize = packSize + 1;
+    *packSize = packSizeAux + 1;
 
     return controlPackage;
 }
@@ -133,7 +136,7 @@ void sendData(int port, unsigned char *buffer, int size, int seqN)
             alarmFlag = FALSE;
             alarm(TIMEOUT);
 
-            write(fd, &info, counter);
+            write(port, &info, counter);
 
             int *size = malloc(sizeof(int));
 
@@ -148,7 +151,7 @@ void sendData(int port, unsigned char *buffer, int size, int seqN)
                 c_state = 0x85; //Expects positive ACK -> controlField val = 0x85 (R = 1)
             }
 
-            unsigned char *status = stateMachine(fd, A_TRM, c_state, S, size);
+            unsigned char *status = stateMachine(port, A_TRM, c_state, S, size);
             printf("Status: %x\n", status[0]);
             if (status[0] == 0x0)
             {
@@ -290,17 +293,17 @@ void closeConnection(int fd)
 {
     do
     {
-        sendControlMsg(fd, A_TRM, C_SET);
+        sendControlMsg(fd, A_TRM, SET);
         //printf("\nTrama DISC enviada\n");
 
         alarmFlag = FALSE;
         alarm(TIMEOUT);
 
         int *size = malloc(sizeof(int));
-        stateMachine(fd, A_REC, C_DISC, S, size);
+        stateMachine(fd, A_REC, DISC, S, size);
         //printf("Trama DISC recebida!\n");
 
-        sendControlMsg(fd, A_REC, C_UA);
+        sendControlMsg(fd, A_REC, UA);
         //printf("Trama UA enviada!\n");
 
     } while (alarmFlag && numRetry < MAX_RETRY);

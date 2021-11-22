@@ -4,15 +4,7 @@
 int llopen(int port, int role){
     struct termios oldtio, newtio;
 
-    //open port
-    int fd = open(port, O_RDWR | O_NOCTTY);
-    if(fd < 0){
-        perror(port);
-        printf("Error opening port\n");
-        exit(-1);
-    }
-
-    if ( tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
+    if ( tcgetattr(port,&oldtio) == -1) { /* save current port settings */
       perror("tcgetattr");
       exit(-1);
     }
@@ -33,9 +25,9 @@ int llopen(int port, int role){
     leitura do(s) pr�ximo(s) caracter(es)
   */
 
-    tcflush(fd, TCIOFLUSH);
+    tcflush(port, TCIOFLUSH);
 
-    if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
+    if ( tcsetattr(port, TCSANOW,&newtio) == -1) {
       perror("tcsetattr");
       exit(-1);
     }
@@ -43,21 +35,21 @@ int llopen(int port, int role){
     if(role == RECEIVER){ //receiver
         int *size = malloc(sizeof(int));
 
-        stateMachine(fd, A_TRM, SET, S, size);
+        stateMachine(port, A_TRM, SET, S, size);
 
         printf("\nTrama SET recebida\n");
-        sendControlMsg(fd, A_TRM, UA);
+        sendControlMsg(port, A_TRM, UA);
         printf("\nTrama UA enviada\n");
     }
     else if(role == TRANSMITTER){ //sender
         (void)signal(SIGALRM, alarmHandler);
-        if(!setUpTransmitter(fd)){
+        if(!setUpTransmitter(port)){
             printf("\nCommunication protocol failed after %d tries\n", MAX_RETRY);
             return -1;
         }
     }
 
-    return fd;
+    return port;
 }
 
 
@@ -67,7 +59,7 @@ int llwrite(int port, FILE *f, char *fName)
 
     unsigned char *buffer = malloc(sizeof(unsigned char) * fSize);
 
-    fread(buffer, sizeof(unsigned char), fSize, fe);
+    fread(buffer, sizeof(unsigned char), fSize, f);
 
     int seqN = sendControl(port, fSize, fName, 0x02);
 
@@ -179,11 +171,26 @@ int llread(int port)
 
     fileInfo dataInfoFinal = receiveControlPackage(port);
 
-    createFile(dataInfo, fileData);
+    //createFile(dataInfo, fileData);
+
+    //create file
+    char path[9 + strlen(dataInfo.filename)];
+    strcpy(path, "received_");
+    strcat(path, dataInfo.filename);
+    printf("PATH: %s\n", path);
+    FILE *received_file = fopen(path, "w+b");
+
+    if(received_file == NULL){
+        printf("Error creating file %s\n", path);
+        return -1;
+    }
+
+    fwrite((void *) fileData, 1, dataInfo.size, received_file);
+    fclose(received_file);
 
     return 0;
 }
-}
+
 
 
 int llclose(int fd, int status){

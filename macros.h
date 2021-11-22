@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "alarme.h"
 
 #define BAUDRATE B38400
 #define MODEMDEVICE "/dev/ttyS5"
@@ -18,6 +19,12 @@
 #define S 0
 
 #define MAX_RETRY 3
+#define MAX_SIZE 1024
+
+//Stuffing macros
+#define ESCAPEMENT 0x7D
+#define REPLACE_FLAG 0x5E
+#define REPLACE_ESCAPEMENT 0x5D
 
 #define FLAG 0x7E
 #define A_TRM 0x03
