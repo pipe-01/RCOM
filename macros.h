@@ -18,7 +18,8 @@
 #define I 1
 #define S 0
 
-#define MAX_RETRY 3
+#define MAX_RETRY 5
+#define TIMEOUT 3
 #define MAX_SIZE 1024
 
 //Stuffing macros
@@ -29,13 +30,20 @@
 #define FLAG 0x7E
 #define A_TRM 0x03
 #define A_REC 0x01
-#define SET 0x03
-#define DISC 0x0B
-#define UA 0x07
-#define RR 0x05
-#define REJ 0x01
-#define SET_BCC A_TRM ^ SET
-#define UA_BCC A_TRM ^ UA
+#define C_SET 0x03
+#define C_DISC 0x0B
+#define C_UA 0x07
+#define C_R0 0x05
+#define C_R1 0x85
+#define C_REJ0 0x81
+#define C_REJ1 0x01
+#define BCC(X, Y) (X) ^ (Y)
+
+
+typedef struct{
+    unsigned int numRetry;
+    unsigned int alarmFlag;
+} AlarmData;
 
 typedef enum {
     START,
@@ -51,6 +59,9 @@ typedef struct
     unsigned char *filename;
     int size;
 } fileInfo;
+
+extern AlarmData alarmData; 
+
 /**
  * @brief Sends message to state machine
  * 
@@ -61,7 +72,10 @@ typedef struct
  * @param size 
  * @return unsigned char* 
  */
-unsigned char *stateMachine(int fd, unsigned char header, char controlField, int type, int *size);
+unsigned char COM_stateMachineHandler(enum state* connection_state, unsigned char byte_read)
+
+int readMessage(int port, unsigned char trama[]);
+
 /**
  * @brief Send Control Message
  * 
@@ -69,7 +83,9 @@ unsigned char *stateMachine(int fd, unsigned char header, char controlField, int
  * @param header 
  * @param controlField 
  */
-void sendControlMsg(int fd, unsigned char header, unsigned char controlField);
+void sendControlMsg(int port, unsigned char msg[])
+
+void createTrama(unsigned char a, unsigned char controlField, unsigned char msg[]);
 /**
  * @brief Stuffs data
  * 

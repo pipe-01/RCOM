@@ -1,5 +1,12 @@
 #include "appLayer.h"
 
+const unsigned char SET[] = {FLAG, A_TRM, C_SET, BCC(A_TRM, C_SET),FLAG};
+const unsigned char UA[] = {FLAG, A_TRM, C_UA, BCC(A_TRM, C_UA), FLAG};
+const unsigned char DISC[] = {FLAG, A_TRM, C_DISC, BCC(A_TRM, C_DISC), FLAG};
+const unsigned char RR0[] = {FLAG, A_TRM, C_RR0, BCC(A_TRM, C_RR0), FLAG};
+const unsigned char RR1[] = {FLAG, A_TRM, C_RR1, BCC(A_TRM, C_RR1), FLAG};
+const unsigned char REJ0[] = {FLAG, A_TRM, C_REJ0, BCC(A_TRM, C_REJ0), FLAG};
+const unsigned char REJ1[] = {FLAG, A_TRM, C_REJ1, BCC(A_TRM, C_REJ1), FLAG};
 
 int llopen(int port, int role){
     struct termios oldtio, newtio;
@@ -32,21 +39,35 @@ int llopen(int port, int role){
       exit(-1);
     }
 
-    if(role == RECEIVER){ //receiver
-        int *size = malloc(sizeof(int));
+    if(role == TRANSMITTER){
+        //send SET
+        printf("[STARTING CONNECTION]\n");
 
-        stateMachine(port, A_TRM, SET, S, size);
+        do{
+            printf("[SENDING SET]\n");
+            sendControlMsg(port, SET); //send SET message
+            setupAlarm();              //install alarm
+            printf("[READING UA]\n");
+            readMessage(port, UA);
 
-        printf("\nTrama SET recebida\n");
-        sendControlMsg(port, A_TRM, UA);
-        printf("\nTrama UA enviada\n");
-    }
-    else if(role == TRANSMITTER){ //sender
-        (void)signal(SIGALRM, alarmHandler);
-        if(!setUpTransmitter(port)){
-            printf("\nCommunication protocol failed after %d tries\n", MAX_RETRY);
+        } while(alarmData.alarmFlag == FALSE && alarmData.numRetry <= MAX_RETRY);
+
+        if(alarmData.numRetry >= MAX_RETRY){
+            printf("Numero de tentativas excedido\n"); //debug
             return -1;
         }
+        alarmData.numRetry = 0;
+        disableAlarm(); //disable alarm
+    }
+    else if(role == RECEIVER){
+        printf("[READING SET]\n");
+        readMessage(port, SET);
+        printf("[SENDING UA]\n");
+        sendControlMsg(port, UA);
+    }
+    else{
+        printf("Invalid role: %d\n", role); //debug
+        return -1;
     }
 
     return port;

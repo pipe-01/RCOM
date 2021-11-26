@@ -1,14 +1,27 @@
 #include "macros.h"
 
-void sendControlMsg(int port, unsigned char header, unsigned char controlField)
+void createTrama(unsigned char a, unsigned char controlField, unsigned char msg[]){
+    msg[5] = {FLAG, a, controlField, a ^ controlField, FLAG};
+}
+
+
+void sendControlMsg(int port, unsigned char msg[])
 {
-    unsigned char msg[5];
-    msg[0] = FLAG;
-    msg[1] = header;
-    msg[2] = controlField;
-    msg[3] = (msg[1] ^ msg[2]);
-    msg[4] = FLAG;
-    write(port, msg, 5);
+    int res = write(port, msg, sizeof(msg));
+    if(res < 0){
+        printf("Error writing\n");
+        return;
+    }
+}
+
+int readMessage(int port, unsigned char trama[]){
+    current_state = START;
+    unsigned char byte_read;
+
+    while(current_state != STOP){
+        read(port, &byte_read, 1);
+        COM_stateMachineHandler(&current, byte_read);
+    }
 }
 
 unsigned char *destuffingData(unsigned char *buf, int *size)
@@ -49,169 +62,71 @@ unsigned char *destuffingData(unsigned char *buf, int *size)
 }
 
 
-unsigned char *stateMachine(int port, unsigned char header, char controlField, int type, int *size)
-{
+unsigned char COM_stateMachineHandler(State_Machine *current_state, unsigned char byte_read) {
+	static unsigned char control_byte = 0;
 
-    State_Machine state = START;
-    unsigned char *msg = malloc(sizeof(unsigned char) * MAX_SIZE);
-    unsigned char *res = malloc(sizeof(unsigned char));
-    res[0] = 0x03;
-    unsigned char c;
-    int counter = 0;
-    int seqN = 0;
-
-    while (state != STOP && !alarmFlag)
-    {
-        read(port, &c, 1);
-
-        switch (state)
-        {
-        case START:
-            if (c == FLAG)
-            {
-                state = FLAG_RCV;
+	switch(*current_state) {
+		case START: {
+			if(byte_read == FLAG){
+				*current_state = FLAG_RCV;
             }
-            break;
-        case FLAG_RCV:
-            counter = 0;
-            if (c == header)
-            {
-                state = A_RCV;
+            else{
+                *current_state = START;
             }
-            else
-            {
-                if (c == FLAG)
-                    state = FLAG_RCV;
-                else
-                    state = STOP;
+			break;
+		}
+		case FLAG_RCV: {
+			if(byte_read == A_CMD){
+				*current_state = A_RCV;
             }
-            break;
-        case A_RCV:
-            if (type == FALSE)
+			else
             {
-                if (c == controlField || c == 0x85 || c == 0x05)
-                {
-                    state = C_RCV;
-                    res[0] = 0x0;
+                if(byte_read == FLAG){
+                    *current_state = FLAG_RCV;
                 }
-                else
-                {
-                    if (c == FLAG)
-                    {
-                        state = FLAG_RCV;
-                        res[0] = 0x1;
-                        return res;
-                    }
-                
-                    else
-                    {
-                        res[0] = 0x0;
-                        return res;
-                    }
+                else{
+                    *current_state = START;
                 }
             }
-            else if (type == TRUE)
-            {
-                if (c == 0x00)
-                {
-                    controlField = 0x00;
-                    seqN = 0;
-                    state = C_RCV;
-                }
-                else if (c == 0x40)
-                {
-                    seqN = 1;
-                    state = C_RCV;
-                    controlField = 0x40;
-                }
-                else
-                {
-                    if (c == FLAG)
-                        state = FLAG_RCV;
-                    else
-                        state = START;
-                }
+			break;
+		}
+		case A_RCV: {
+			if ((byte_read == CONTROL_SET) || (byte_read == CONTROL_UA) || (byte_read = CONTROL_DISC) || (byte_read == C0) || (byte_read == C1)) {
+				*current_state = C_RCV;
+				control_byte = byte_read;
+			}
+			else if (byte_read == FLAG){
+				*current_state = FLAG_RCV;
             }
-
-            break;
-        case C_RCV:
-            if (c == (A_TRM ^ controlField) || c == (A_TRM ^ 0x05) || c == (A_TRM ^ 0x85)) //BCC = A_TRM ^ C
-            {
-                state = BCC_OK;
+			else{
+				*current_state = START;
             }
-            else
-                state = START;
-            break;
-        case BCC_OK:
-            if (c == FLAG)
-            {
-                if (type == TRUE)
-                {
-
-                    *size = counter;
-
-                    msg = destuffingData(msg, size);
-
-                    unsigned char bcc2 = msg[*size - 1];
-
-                    int sizeBcc = *size - 1;
-                    unsigned char calcBcc2 = calculateBCC2(msg, sizeBcc);
-
-                    unsigned char positiveACK;
-                    unsigned char negativeACK; 
-                    if (bcc2 == calcBcc2)
-                    {
-
-                        if (seqN == 0)
-                        {
-                            positiveACK = 0x05;
-                        }
-                        else
-                        {
-                            positiveACK = 0x85;
-                        }
-                        sendControlMsg(port, A_TRM, positiveACK);
-
-                    }
-                }
-                state = STOP;
+			break;
+		}
+		case C_RCV: {
+			if (byte_read == (BCC(A_CMD, control_byte))){
+				*current_state = BCC_OK;
             }
-            else
-            {
-                if (type == FALSE)
-                {
-                    state = START;
-                }
-                else
-                {
-                    msg[counter++] = c;
-                    if (counter == MAX_SIZE)
-                    {
-                        counter = 0;
-                        state = START;
-                        free(msg);
-                    }
-                }
+			else if (byte_read == FLAG){
+				*current_state = FLAG_RCV;
             }
-            break;
-        default:
-            break;
-        }
-    }
-
-    if (type == TRUE)
-    {
-        unsigned char *data = malloc(sizeof(unsigned char) * (*size));
-        for (int i = 0; i < (*size); i++)
-        {
-            data[i] = msg[i];
-        }
-        return data;
-    }
-    else
-    {
-        return res;
-    }
+			else{
+				*current_state = START;
+            }
+			break;
+		}
+		case BCC_OK: {
+			if (byte_read == FLAG) {
+				*current_state = STOP;
+			}
+			else
+				*current_state = START;
+			break;
+		}
+		default:
+			break;
+	}
+	return control_byte;
 }
 
 

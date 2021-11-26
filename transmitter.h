@@ -4,8 +4,6 @@
 #include <fcntl.h>
 #include "alarme.h"
 
-#define TIMEOUT 5
-
 #define C_START 0x02
 #define C_DATA 0x01
 #define T1 0x00
