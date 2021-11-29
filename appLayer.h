@@ -15,10 +15,15 @@
 #define TRANSMITTER 0
 #define RECEIVER 1
 
-typedef struct applicationLayers{
-    int fileDescriptor;
-    int status;
-} applicationLayer;
+typedef struct {
+	unsigned int N_s;
+	unsigned int framesSent;
+	unsigned int framesReceived;
+	unsigned int RRsent;
+	unsigned int RJsent;
+	unsigned int RRreceived;
+	unsigned int RJreceived;
+}Data_control;
 
 /**
  * @brief 
@@ -55,3 +60,20 @@ int llread(int fd);
  * @return int 
  */
 int llclose(int fd, int status);
+
+/**
+ * @brief 
+ * 
+ * @param fd 
+ * @return int 
+ */
+int readResponse(int fd);
+
+/**
+ * @brief 
+ * 
+ * @param port 
+ * @param trama 
+ * @return int 
+ */
+int readMessage(int port, unsigned char trama[]){

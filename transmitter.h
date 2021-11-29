@@ -75,10 +75,3 @@ unsigned char *generateDataPackage(unsigned char *buf, int *size, int n, int l1,
  * @return unsigned char* 
  */
 unsigned char *generateControlPackage(int fSize, unsigned char *fName, int *packageSize, int controlfield);
-
-/**
- * @brief 
- * 
- * @param fd 
- */
-void closeConnection(int fd);

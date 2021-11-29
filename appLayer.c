@@ -8,6 +8,10 @@ const unsigned char RR1[] = {FLAG, A_TRM, C_RR1, BCC(A_TRM, C_RR1), FLAG};
 const unsigned char REJ0[] = {FLAG, A_TRM, C_REJ0, BCC(A_TRM, C_REJ0), FLAG};
 const unsigned char REJ1[] = {FLAG, A_TRM, C_REJ1, BCC(A_TRM, C_REJ1), FLAG};
 
+Data_control data_control;
+State_Machine current_state;
+AlarmData alarmData;
+
 int llopen(int port, int role){
     struct termios oldtio, newtio;
 
@@ -39,15 +43,17 @@ int llopen(int port, int role){
       exit(-1);
     }
 
+    data_control.N_s = 0;
+
     if(role == TRANSMITTER){
         //send SET
         printf("[STARTING CONNECTION]\n");
 
         do{
-            printf("[SENDING SET]\n");
-            sendControlMsg(port, SET); //send SET message
+            printf("Sending SET]\n");
+            writeMessage(port, SET); //send SET message
             setupAlarm();              //install alarm
-            printf("[READING UA]\n");
+            printf("Reading UA]\n");
             readMessage(port, UA);
 
         } while(alarmData.alarmFlag == FALSE && alarmData.numRetry <= MAX_RETRY);
@@ -60,10 +66,10 @@ int llopen(int port, int role){
         disableAlarm(); //disable alarm
     }
     else if(role == RECEIVER){
-        printf("[READING SET]\n");
+        printf("Reading SET\n");
         readMessage(port, SET);
-        printf("[SENDING UA]\n");
-        sendControlMsg(port, UA);
+        printf("Sending UA\n");
+        writeMessage(port, UA);
     }
     else{
         printf("Invalid role: %d\n", role); //debug
@@ -74,142 +80,106 @@ int llopen(int port, int role){
 }
 
 
-int llwrite(int port, FILE *f, char *fName)
+int llwrite(int port, unsigned char *packet, int packet_size)
 {
-    int fSize = getFileSize(f);
+    unsigned int frame [2 * packet_size + 6]; //6 -> F + A + BCC1 + BCC2 + F | 2 * packet para assegurar espaço suficiente para byte stuffing
+    unsigned int framePosition;
 
-    unsigned char *buffer = malloc(sizeof(unsigned char) * fSize);
-
-    fread(buffer, sizeof(unsigned char), fSize, f);
-
-    int seqN = sendControl(port, fSize, fName, 0x02);
-
-    sendData(port, buffer, fSize, seqN);
-
-    sendControl(port, fSize, fName, 0x03);
-
-    return 0;
-}
-
-int llread(int port)
-{
-    fileInfo dataInfo = receiveControlPackage(port);
-
-    int numFrame = dataInfo.size / 256;
-
-    int l1 = dataInfo.size / 256;
-    int l2 = dataInfo.size % 256;
-
-    if (l2 != 0)
-    {
-        numFrame++;
+    if(data_control.N_s == 0){
+        data_control.N_s = 1;
+    }
+    else{
+        data_control.N_s = 0;
     }
 
-    printf("Number of Frames: %d", numFrame); //debug
-    int *size = malloc(sizeof(int));
 
-    unsigned char *fileData = malloc(sizeof(unsigned char) * dataInfo.size);
+    //Frame: [F, A, C, BCC1, PACKET, BCC2, F]
+    framePosition = 4;
+    //Set of frame header
+    frame[0] = FLAG;
+    frame[1] = A_CMD;
+    frame[2] = (data_control.N_s == 0 ? C0 : C1);
+    frame[3] = BCC(frame[1], frame[2]);
 
-    int counter = 0;
-    int n = -1;
-    int currentN = 0;
-    int fail = FALSE;
-    for (int i = 0; i < numFrame; i++)
-    {
+    //process data
+    unsigned int dataIndex = 0;
+    unsigned char currPacket_char;
 
-        if (fail == TRUE)
-        {
-            printf("numFrame: %d\n failed at - %d\n", numFrame, i);
+    while(dataIndex < packet_size){
+        currPacket_char = packet[dataIndex++];
+
+        //Byte stuffing
+        if(currPacket_char == FLAG || currPacket_char == ESCAPEMENT){
+            frame[framePosition++] = ESCAPEMENT;
+            frame[framePosition++] = currPacket_char ^ BYTE_STUFFING
         }
-
-        unsigned char *data = stateMachine(port, A_TRM, 0x00, I, size);
-        currentN = data[1];
-
-        if (currentN == n + 1)
-        {
-            if (i < numFrame - 1 && (*size >= 255 && *size <= 261))
-            {
-                int cnt = 0;
-                for (int d = 4; d < (*size) - 1; d++)
-                {
-                    cnt++;
-                    fileData[counter++] = data[d];
-                }
-                printf("FRAME - %d | SIZE: %d\n", data[1], cnt);
-                fail = FALSE;
-                n = currentN;
-            }
-            else if (i == numFrame - 1 && (*size >= l2 && *size <= l2 + 5))
-            {
-                int cnt = 0;
-                for (int d = 4; d < (*size) - 1; d++)
-                {
-                    cnt++;
-                    fileData[counter++] = data[d];
-                }
-                printf("LAST FRAME - %d | SIZE: %d\n", data[1], cnt);
-                n = currentN;
-            }
-            else if (*size > 261)
-            {
-                int cnt = 0;
-                for (int d = (*size) - 257; d < (*size) - 1; d++)
-                {
-                    cnt++;
-                    fileData[counter++] = data[d];
-                }
-                printf("FRAME - %d | SIZE: %d\n", data[1], cnt);
-                fail = FALSE;
-                n = currentN;
-            }
-            else
-            {
-                printf("%d\n", *size);
-                printf("Incorrect frame with i = %d\n", i);
-                //  sendControlMsg(port, A_TRM, 0x01);
-                i--;
-                printf("Decreased i: %d\n", i);
-            }
-        }
-        else if (currentN == n)
-        { //duplicado
-            printf("Received Duplicate with i = %d\n", i);
-            i--;
-            printf("Decreased i by: %d\n", i);
-        }
-        else
-        {
-            i--;
-        }
-
-        if (currentN == 255)
-        {
-            n = -1;
+        else{
+            frame[framePosition++] = currPacket_char;
         }
     }
 
-    printf("SIZE: %d", counter);
+    unsigned char bcc2 = calculateBCC2(packet, packet_size);
 
-    fileInfo dataInfoFinal = receiveControlPackage(port);
+    // Set of frame footer
+    if(bcc2 == ESCAPEMENT || bcc2 == FLAG){
+        frame[framePosition++] = ESCAPEMENT;
+        frame[framePosition++] = bcc2 ^ BYTE_STUFFING;
+    }
+    else{
+        frame[framePosition++] = bcc2;
+    }
 
-    //createFile(dataInfo, fileData);
+    frame[framePosition++] = FLAG;
+    
+    int res;
 
-    //create file
-    char path[9 + strlen(dataInfo.filename)];
-    strcpy(path, "received_");
-    strcat(path, dataInfo.filename);
-    printf("PATH: %s\n", path);
-    FILE *received_file = fopen(path, "w+b");
+    do{
+        res = write(fd, frame, framePosition);
 
-    if(received_file == NULL){
-        printf("Error creating file %s\n", path);
+        setupAlarm();
+
+        if(readResponse(fd) == -1){
+            disableAlarm();
+            data_control.RJreceived++;
+            printf("Received REJ #%d\n", data_control.RJreceived);
+            continue;
+        }    
+    } while (alarmData.alarmFlag && alarmData.numRetry <= MAX_RETRY);
+
+    if(alarmData.numRetry >= MAX_RETRY){
+        printf("Numero de tentativas excedido\n"); //debug
         return -1;
     }
+    else{
+        alarmData.numRetry = 1;
+    }
+    disableAlarm(); //disable alarm
+    
+    printf("Sent frame number %d with size %d\n", data_control.framesSent, framePosition);
+    data_control.framesSent++;
+    
+    return res;
+}
 
-    fwrite((void *) fileData, 1, dataInfo.size, received_file);
-    fclose(received_file);
+int llread(int port, unsigned char *pakcet, int stage)
+{
+    unsigned char frame[MAX_FRAME_SIZE];
+    int received = FALSE;
+    int frame_length = 0;
+    unsigned char control_field;
 
-    return 0;
+
+    while(!done){
+        frame_length = readFrame(fd, frame);
+        if(frame_length == -1){
+            return -1;
+        }
+
+        //destuff packet
+        unsigned char final_frame[frame_length];
+        int final_frame_length = destuffFrame(frame, frame_length, final_frame);  
+        control_field = frame[2];      
+    }
 }
 
 
@@ -217,13 +187,77 @@ int llread(int port)
 int llclose(int fd, int status){
     if (status == TRANSMITTER)
     {
-        closeConnection(fd);
+        printf("CLOSING CONNECTION\n Sending DISC\n");
+        do
+        {
+            //send DISC
+            writeMessage(fd, DISC);
+            setupAlarm();
+            //read DISC
+            printf("Reading Disc\n");
+            readMessage(fd, UA);
+            disableAlarm();
+        } while (alarmData.alarmFlag && alarmData.numRetry <= MAX_RETRY);
+
+        if(alarmData.numRetry >= MAX_RETRY){
+            printf("MAX TRIES!\n");
+            return -1;
+        }
+        else{
+            alarmData.numRetry = 1;
+        }
+        disableAlarm();
+        printf("UA received\n");
+        
     }
-    if (status == RECEIVER)
+    else if (status == RECEIVER)
     {
-        handleDisconnection(fd);
+        //receive DISC
+        setupAlarm();
+        readMessage(fd, DISC);
+        disableAlarm();
+        printf("DISC received\n");
+        //send UA
+        printf("Sending UA\n");
+        writeMessage(fd, UA);
     }
-    close(fd);
+    else{
+        printf("Unknow status: %d\n", status);
+        return 1;
+    }
+    closeConnection(fd);
 
     return 0;
+}
+
+int readMessage(int port, unsigned char trama[]){
+    current_state = START;
+    unsigned char byte_read;
+
+    while(current_state != STOP){
+        read(port, &byte_read, 1);
+        COM_stateMachineHandler(&current, byte_read);
+    }
+}
+
+int readResponse(int fd){
+    unsigned char byte_read, control_field;
+    current_state = START;
+    int res = 0;
+    while(current_state != STOP && !alarmData.alarmFlag){
+        res = read(fd, &byte_read, 1);
+        COM_stateMachineHandler(&current, byte_read);
+        if(current_state == BCC_OK){
+            control_field = byte_read;
+        }
+    }
+    if(control_field == C_R0 && data_control.N_s == 1){
+        return 0;
+    }
+    else if(control_field == C_R1 && data_control.N_s == 0){
+        return 0;
+    }
+    else{
+        return -1;
+    }
 }

@@ -60,7 +60,6 @@ typedef struct
     int size;
 } fileInfo;
 
-extern AlarmData alarmData; 
 
 /**
  * @brief Sends message to state machine
@@ -74,8 +73,6 @@ extern AlarmData alarmData;
  */
 unsigned char COM_stateMachineHandler(enum state* connection_state, unsigned char byte_read)
 
-int readMessage(int port, unsigned char trama[]);
-
 /**
  * @brief Send Control Message
  * 
@@ -83,7 +80,7 @@ int readMessage(int port, unsigned char trama[]);
  * @param header 
  * @param controlField 
  */
-void sendControlMsg(int port, unsigned char msg[])
+void writeMessage(int port, unsigned char msg[])
 
 void createTrama(unsigned char a, unsigned char controlField, unsigned char msg[]);
 /**
@@ -109,3 +106,10 @@ int getFileSize(FILE *file);
  * @return unsigned char 
  */
 unsigned char calculateBCC2(const unsigned char *buffer, unsigned int size);
+
+/**
+ * @brief 
+ * 
+ * @param fd 
+ */
+void closeConnection(int fd);

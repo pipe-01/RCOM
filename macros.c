@@ -5,22 +5,12 @@ void createTrama(unsigned char a, unsigned char controlField, unsigned char msg[
 }
 
 
-void sendControlMsg(int port, unsigned char msg[])
+void writeMessage(int port, unsigned char msg[])
 {
     int res = write(port, msg, sizeof(msg));
     if(res < 0){
         printf("Error writing\n");
         return;
-    }
-}
-
-int readMessage(int port, unsigned char trama[]){
-    current_state = START;
-    unsigned char byte_read;
-
-    while(current_state != STOP){
-        read(port, &byte_read, 1);
-        COM_stateMachineHandler(&current, byte_read);
     }
 }
 
@@ -220,4 +210,16 @@ int getFileSize(FILE *file)
 
     // retorna tamanho
     return size;
+}
+
+
+void closeConnection(int fd)
+{
+    //close fd and set old termios struct
+   sleep(2);
+   if(tcsetattr(fd, TCSANOW, &oldtio) == -1){
+       perror("tcsetattr\n");
+       return;
+   }
+   close(fd);
 }
