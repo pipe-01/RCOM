@@ -178,7 +178,8 @@ int llread(int port, unsigned char *pakcet, int stage)
         //destuff packet
         unsigned char final_frame[frame_length];
         int final_frame_length = destuffFrame(frame, frame_length, final_frame);  
-        control_field = frame[2];      
+        control_field = frame[2];   
+           
     }
 }
 
